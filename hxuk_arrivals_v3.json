@@ -1,0 +1,779 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title":"hxuk_arrivals",
+  "description":"Arrival information from Chauntry CHIPS/FRITTEN files HXUK/DE_NOMSUP1",
+  "$id": "/dags/chauntry/schemas/hxuk_arrivals.json",
+  "self": {
+    "owner": "booking-and-data",
+    "data_contexts": [],
+    "status": "Active"
+  },
+  "type": "object",
+  "properties": {
+    "meta": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "title": "Event Meta Data",
+      "id": "/models/meta/v4.0.1/schema.json",
+      "description": "A container to describe the message itself for data platform processing use. (Dereferenced)",
+      "type": "object",
+      "properties": {
+        "event": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "Event Meta Data",
+          "id": "/models/event/v3.0.1/schema.json",
+          "description": "Data on the event from the sender. Not about the progress of the event. (Dereferenced)",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9\\_]{1,1024}$",
+              "description": "The name of the event"
+            },
+            "is_client": {
+              "title": "Client/server flag",
+              "description": "Flag indicating if the event was generated from a client or server process.",
+              "type": "boolean"
+            },
+            "service": {
+              "title": "Event generating service",
+              "description": "Name of the service that created the event.",
+              "type": "string",
+              "pattern": "^.+$"
+            },
+            "organisation": {
+              "$schema": "http://json-schema.org/draft-04/schema#",
+              "title": "Organisation",
+              "description": "List of legal entities involved in trading, using the offical company name from Companies House or equivalent (Dereferenced)",
+              "id": "/common/organisation/v1.0.1/schema.json",
+              "type": "string",
+              "enum": [
+                "Holiday Extras Limited",
+                "Holiday Extras Cover Limited",
+                "Holiday Extras Shortbreaks Limited",
+                "Holiday Extras GmbH",
+                "Chauntry Corporation Limited",
+                "Park IT Solutions Limited",
+                "Airparks Services Limited",
+                "EasyJet Airline Company Limited"
+              ]
+            },
+            "data_context": {
+              "title": "A mechanism to label or group events",
+              "description": "Used to support security-oriented segregation of events into specific buckets. The mechanism allows individual event instances to control the bigquery dataset, and topic in which they land. From a security point of view this is desirable as it allows data access controls to be setup for each separate data_context. Please see the data_context schema for access control details",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "collector__streaming",
+                    "payment__streaming",
+                    "fraud__streaming",
+                    "finance__streaming"
+                  ],
+                  "default": "collector__streaming"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "environment": {
+              "$schema": "http://json-schema.org/draft-04/schema#",
+              "id": "/common/environment/v1.0.1/schema.json",
+              "title": "Deployment environment",
+              "description": "Environment where the service generating the event is deployed. (Dereferenced)",
+              "type": "string",
+              "enum": [
+                "production",
+                "staging",
+                "test",
+                "development"
+              ]
+            },
+            "source_ip": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                {
+                  "type": "string",
+                  "format": "ipv6"
+                }
+              ]
+            },
+            "schema_version": {
+              "$schema": "http://json-schema.org/draft-04/schema#",
+              "id": "/common/version/v1.0.0/schema.json",
+              "title": "Event schema version",
+              "description": "Version of the event schema. (Dereferenced)",
+              "type": "string",
+              "pattern": "^v[0-9]+.[0-9]+.[0-9]+$"
+            },
+            "published": {
+              "title": "Client-side timestamp",
+              "description": "Client-side ISO8601 timestamp (with millisecond accuracy) when the request with the event was created to the collector is made.",
+              "type": "string",
+              "format": "date-time"
+            },
+            "collected": {
+              "title": "Collector-side timestamp",
+              "description": "Collector-side ISO8601 timestamp (with millisecond accuracy) when the request with the event was created to the collector is made.",
+              "type": "string",
+              "format": "date-time"
+            },
+            "collection_digest": {
+              "title": "Digest of the event JSON at the moment of ingestion by the collector",
+              "description": "Blake2b (https://blake2.net) hexadecimal digest with length of 128 bits (8 bytes) of the compatch (i.e. no whitespace) JSON event object representation.",
+              "type": "string",
+              "pattern": "^[a-z0-9]{1,32}$"
+            },
+            "id": {
+              "title": "Event identifier",
+              "description": "Event unique identifier assigned when the event is first ingested by the Data Platform.",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "type",
+            "is_client",
+            "service",
+            "organisation",
+            "environment",
+            "data_context",
+            "schema_version",
+            "published"
+          ],
+          "additionalProperties": false
+        },
+        "log": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "Event log schema",
+          "id": "/models/log/v1.0.2/schema.json",
+          "description": "Event life cycle metadata information. (Dereferenced)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "system": {
+                "title": "Metadata creator system",
+                "description": "The name of the system the metadata was added by. FIXME: remove `old_collector` from enum in next major version.",
+                "type": "string",
+                "enum": [
+                  "collector",
+                  "gcs_collector",
+                  "old_collector",
+                  "publisher",
+                  "splitter"
+                ]
+              },
+              "key": {
+                "title": "Property name",
+                "description": "The name of the metadata property.",
+                "type": "string",
+                "enum": [
+                  "dead_letter_entry_timestamp",
+                  "dead_letter_exit_timestamp",
+                  "entry_timestamp",
+                  "exit_timestamp",
+                  "id",
+                  "payload_digest",
+                  "source_ip",
+                  "version"
+                ]
+              },
+              "value": {
+                "title": "Property value",
+                "description": "The value of the metadata property. Can be `null` if the key refers to a timestamp.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timestamp": {
+                "title": "Property timestamp",
+                "description": "The timestamp when the property was added to the metadata.",
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "system",
+              "key",
+              "value",
+              "timestamp"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "event",
+        "log"
+      ],
+      "additionalProperties": false
+    },
+    "file_columns": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "id": "/models/tracking/v2.5.3/schema.json",
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "type": "string",
+          "description": "Primary product code"
+        },
+        "arrival_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "description": "The arrival date"
+        },
+        "booking_ref": {
+          "type": [
+            "string"
+          ],
+          "description": "Booking ref"
+        },
+        "agent": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Identifier for the agent associated with the booking"
+        },
+        "agent_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent description for the agent associated with the booking"
+        },
+        "address_1": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Line 1"
+        },
+        "address_2": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Line 2"
+        },
+        "address_3": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Line 3"
+        },
+        "address_4": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Line 4"
+        },
+        "address_5": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Line 5"
+        },
+        "address_6": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent Address Post Code"
+        },
+        "day_tel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer's Daytime contact number"
+        },
+        "night_tel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer's evening contact number"
+        },
+        "lead_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lead customer's name"
+        },
+        "contact_centre_initials": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "3 digit initials sent on all bookings - MGP for example is a general web booking, but other initials will show call centre user or agent initials"
+        },
+        "bkg_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The date the booking was made"
+        },
+        "duration": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "The duration of the booking"
+        },
+        "mot": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The booking mot e.g A, P8 ( Room Only, Room with Parking for 8 day)"
+        },
+        "remarks": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A free text field to be used as required, this could be a booking reference for a third party."
+        },
+        "concess": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Identifies if a concession booking"
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The status of the booking e.g Firm"
+        },
+        "room_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Room types booked, if multiple rooms then listed e.g (TWN x 1; TWN x 1;)"
+        },
+        "direct": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Identifies whether direct (Y or N)"
+        },
+        "agent_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Agent group that the agent is assigned to"
+        },
+        "productid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product ID, product classification, e.g. 0=Hotels, 1=Parking, 6=Lounge, 7=Rail Only"
+        },
+        "gross": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The value of the booking"
+        },
+        "nett": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The nett value of the booking"
+        },
+        "cost": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Supplier Cost"
+        },
+        "segment": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The segment rate that has been applied. Used for yield pricing."
+        },
+        "second_supplier": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Alternate Supplier Code"
+        },
+        "amount_due": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Amount Due"
+        },
+        "no_rooms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Number of rooms"
+        },
+        "no_pax": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Number of passengers"
+        },
+        "vat_on_comm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Value of VAT paid on the commission"
+        },
+        "canx_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Date the booking was cancelled"
+        },
+        "booking_medium": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "How the booking was made"
+        },
+        "operator": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The person that took the booking"
+        },
+        "railcoach_cost": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The rail coach cost"
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Time"
+        },
+        "email": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer email address"
+        },
+        "payment_type_1": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Payment Type, e.g. card, cheque"
+        },
+        "payment_value_1": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Amount Paid"
+        },
+        "payment_type_2": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Payment Method, e.g. card, cheque"
+        },
+        "payment_value_2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Amount Paid"
+        },
+        "car_registration": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Car Registration"
+        },
+        "bkg_history": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Booking History"
+        },
+        "inv_paid": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Invoice amount paid"
+        },
+        "inv_due": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Invoice amount due"
+        },
+        "supp_paid": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Amount paid to Supplier"
+        },
+        "supp_due": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Amount owed to Supplier"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Label"
+        },
+        "data_protection": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Data Protection Flag"
+        },
+        "returned_mail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Returned Mail"
+        },
+        "customer_title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Title"
+        },
+        "customer_init": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer initials"
+        },
+        "customer_last_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer last name"
+        },
+        "assoc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Assoc"
+        },
+        "fad_no": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Free text field to allow partners to enter their own booking ref, also used by HX in the past for additional data. Also known as receipt number, customer ref, cust ref"
+        },
+        "card_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Card Type"
+        },
+        "start_time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Start Time"
+        },
+        "end_time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "End Time"
+        },
+        "no_vehicles": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Number of vehicles"
+        },
+        "miles_out": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "No Longer used, were used historically for Direct Airport Transfers"
+        },
+        "miles_in": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "No Longer used, were used historically for Direct Airport Transfers"
+        },
+        "client_address_1": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Line 1"
+        },
+        "client_address_2": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Line 2"
+        },
+        "client_address_3": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Line 3"
+        },
+        "client_address_4": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Line 4"
+        },
+        "client_address_5": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Line 5"
+        },
+        "client_address_6": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Address Post Code"
+        },
+        "band": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "band"
+        },
+        "child_ages": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Child ages separated by |"
+        },
+        "country": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Two character country code e.g. GB"
+        },
+        "ag_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "No longer used"
+        },
+        "booking_voucher": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Booking Voucher"
+        },
+        "cust_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Customer Reference"
+        },
+        "currency": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Currency code of the booking"
+        },
+        "basket_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Identifier used to tie more than one booking to an umbrella reference"
+        },
+        "cc_token": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Last 4 digits of customer's card"
+        }
+      },
+      "required": [
+        "booking_ref"
+      ]
+    }
+  }
+}
+
+
