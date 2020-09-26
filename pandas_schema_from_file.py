@@ -24,6 +24,7 @@ def get_schema_columns_datatypes(file_columns_schema):
     column_dtype = {}
     for column_name, column_attributes in file_columns_schema.items():
         column_data_types = column_attributes['type']
+
         if isinstance(column_data_types, list):
             column_data_type = column_data_types[0]
         else:
