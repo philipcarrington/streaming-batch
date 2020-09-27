@@ -9,43 +9,9 @@ import json
 # Get the local libs:
 from pandas_schema_from_file import get_schema_json, get_file_columns_from_dict, \
     get_schema_columns, get_schema_columns_datatypes
-from pandas_bad_rows_dealer import parse_bad_rows_string, write_bad_rows_file
+from pandas_bad_rows_dealer import parse_bad_rows_string
 from generate_payload_meta import get_meta_data
-
-
-@staticmethod
-def create_event(dicts):
-    # construct event by joining meta and data
-    json = {}
-    for d in dicts:
-        json.update(d)
-    return json
-
-
-def write_event_to_file(
-        good_output_filename,
-        event
-):
-    with open(good_output_filename, "a+") as fp:
-        json.dump(event, fp)
-        fp.write("\n")
-
-
-def combine_and_write_meta_and_data(
-        meta,
-        data_output,
-        output_filename
-):
-    file_columns_data = {}
-    for items in data_output:
-        file_columns_data['file_columns'] = items
-
-        file_data = json.dumps({**meta, **file_columns_data})
-
-        write_event_to_file(
-            output_filename,
-            file_data
-        )
+from json_file_writer import write_bad_rows_file, combine_and_write_meta_and_data
 
 
 def delimited_file_to_json(
@@ -115,17 +81,14 @@ def delimited_file_to_json(
     sys.stderr = cur_stderr
     result_string = bad_report.getvalue()
 
-    # Get the bad rows and the reason
+    # Get the bad rows and the reason for the file:
     bad_rows_dict = parse_bad_rows_string(result_string)
-    write_bad_rows_file(
-        data_file_name,
-        bad_rows_dict,
-        input_filepath,
-        bad_output_filename
-    )
 
-    # Generate the meta data:
-    payload_meta = get_meta_data(
+    # Turn the dataframe into data for the file:
+    data_output = data.to_dict(orient='records')
+
+    # Good rows meta:
+    good_payload_meta = get_meta_data(
         event_type=data_file_name,
         is_client=is_client,
         service=service,
@@ -136,15 +99,35 @@ def delimited_file_to_json(
         data_context=data_context
     )
 
-    # Turn the dataframe into data for the file:
-    data_output = data.to_dict(orient='records')
+    # Bad rows meta:
+    bad_payload_meta = get_meta_data(
+        event_type='bad_batch_data',
+        is_client=is_client,
+        service=service,
+        environment=environment,
+        schema_version='1.0.0',
+        published=published,
+        organisation=organisation,
+        data_context=data_context
+    )
 
-    # Combine the dicts and write to file:
+    # Combine the good dicts and write to file:
     combine_and_write_meta_and_data(
-        payload_meta,
+        good_payload_meta,
         data_output,
         good_output_filename
     )
+
+    # Combine the bad dicts and write to file:
+    print('Bad data out')
+    write_bad_rows_file(
+        data_file_name,
+        bad_payload_meta,
+        bad_rows_dict,
+        input_filepath,
+        bad_output_filename
+    )
+
 
 if __name__ == '__main__':
     delimited_file_to_json(
